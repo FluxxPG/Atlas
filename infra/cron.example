@@ -1,0 +1,14 @@
+# Crawl and intelligence refresh every 15 minutes
+*/15 * * * * curl -X POST http://localhost:8000/api/v1/admin/jobs/seed
+
+# Discovery expansion for target sectors every 30 minutes
+*/30 * * * * curl -X POST http://localhost:8000/api/v1/admin/jobs/discover -H "Content-Type: application/json" -d "{\"query\":\"restaurants needing CRM\",\"city\":\"Mumbai\",\"region\":\"Maharashtra\",\"country\":\"India\",\"source\":\"hybrid\"}"
+
+# Geo grid expansion for strategic metros every hour
+15 * * * * curl -X POST http://localhost:8000/api/v1/admin/jobs/geo-grid -H "Content-Type: application/json" -d "{\"city\":\"Bengaluru\",\"region\":\"Karnataka\",\"country\":\"India\",\"grid\":[12.9716,77.5946],\"source\":\"hybrid\"}"
+
+# Recompute trends every hour
+0 * * * * curl -X POST http://localhost:8000/api/v1/admin/insights/rebuild
+
+# Rebuild vector embeddings twice a day after major crawl accumulation
+0 */12 * * * curl -X POST http://localhost:8000/api/v1/admin/embeddings/rebuild

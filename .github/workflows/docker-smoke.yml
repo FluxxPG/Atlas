@@ -1,0 +1,16 @@
+name: Docker Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  compose-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare env
+        run: cp .env.example .env
+      - name: Build stack
+        run: docker compose build
+      - name: Boot core services
+        run: docker compose up -d postgres redis

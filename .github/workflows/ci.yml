@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master", "codex/**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: intelligence
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d intelligence"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/intelligence
+      SYNC_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intelligence
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-secret
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8000/api/v1
+      NEXT_PUBLIC_WS_URL: ws://127.0.0.1:8000/api/v1/ws/platform
+      CORS_ORIGINS: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install web deps
+        run: npm install
+      - name: Install api deps
+        run: pip install -r apps/api/requirements.txt
+      - name: Install worker deps
+        run: pip install -r apps/worker/requirements.txt
+      - name: Apply schema migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d intelligence -f supabase/migrations/001_init.sql
+          psql -h localhost -U postgres -d intelligence -f supabase/migrations/002_enterprise.sql
+          psql -h localhost -U postgres -d intelligence -f supabase/migrations/003_commercial_ops.sql
+      - name: Run Python tests
+        run: npm run test:python
+      - name: Build web
+        run: npm run build:web
+      - name: API smoke
+        run: |
+          python apps/api/run_server.py > api.log 2>&1 &
+          sleep 8
+          curl --fail http://127.0.0.1:8000/health
+          curl --fail http://127.0.0.1:8000/ready

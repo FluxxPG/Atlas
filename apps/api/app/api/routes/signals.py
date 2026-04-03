@@ -1,0 +1,18 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import get_db
+from app.models.entities import Signal
+from app.schemas.common import PaginatedResponse
+from app.utils.serializers import serialize_signal
+
+router = APIRouter(prefix="/signals")
+
+
+@router.get("", response_model=PaginatedResponse)
+async def signals(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Signal).order_by(Signal.created_at.desc()).limit(50))
+    items = result.scalars().all()
+    return PaginatedResponse(items=[serialize_signal(item) for item in items], total=len(items))
+

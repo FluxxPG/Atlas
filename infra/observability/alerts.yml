@@ -1,0 +1,27 @@
+groups:
+  - name: atlasbi-platform
+    rules:
+      - alert: AtlasBIApiUnavailable
+        expr: atlasbi_database_up == 0 or atlasbi_redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AtlasBI platform dependency failure"
+          description: "Database or Redis connectivity is unavailable."
+      - alert: AtlasBICrawlQueueBacklog
+        expr: atlasbi_queue_depth{queue="crawl:jobs"} > 200
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AtlasBI crawl queue backlog"
+          description: "Crawl queue depth has remained above 200 for 10 minutes."
+      - alert: AtlasBILowDatasetGrowth
+        expr: atlasbi_dataset_size < 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AtlasBI dataset size unexpectedly low"
+          description: "The indexed company dataset is below the expected floor."
